@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель администратора - Сеансы</title>
+    <th:block th:replace="~{/admin/fragments/admin-sidebar :: head}"></th:block>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+
+    <style>
+        .session-management {
+            --border-color: #dee2e6;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --light-bg: #f8f9fa;
+            --primary-color: #0d6efd;
+        }
+
+        .session-table {
+            border: 1px solid var(--border-color);
+            box-shadow: 0 0.5rem 1rem var(--shadow-color);
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: var(--light-bg);
+            position: sticky;
+            top: 0;
+        }
+
+
+        .action-buttons .btn {
+            margin-right: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge {
+            width: 120px;
+            height: 30px;
+        }
+
+        .search-form {
+            background-color: var(--light-bg);
+            padding: 1.25rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.25rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .batch-actions {
+            background: var(--light-bg);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+
+        .sort-asc::after {
+            content: " ↑";
+        }
+
+        .sort-desc::after {
+            content: " ↓";
+        }
+
+        .batch-action-btn:disabled {
+            opacity: 0.65;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body class="session-management">
+
+<div th:replace="~{/admin/fragments/admin-sidebar :: sidebar}"></div>
+
+<div class="main-content">
+
+    <div class="d-flex flex-column mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0"><i class="bi bi-camera-video me-2"></i>Управление сеансами</h1>
+            <div th:if="${success}" class="alert alert-success d-inline-block"><span th:text="${success}"></span></div>
+            <div th:if="${error}" class="alert alert-danger d-inline-block"><span th:text="${error}"></span></div>
+            <div style="width: 200px;"></div>
+        </div>
+
+    </div>
+
+
+    <form method="get" th:action="@{/admin/sessions}" class="search-form">
+        <div class="row g-3">
+
+            <input type="hidden" name="sort" th:value="${param.sort}">
+            <input type="hidden" name="sortDir" th:value="${param.sortDir}">
+            <input type="hidden" name="page" th:value="${param.page}">
+            <input type="hidden" name="size" th:value="${param.size}">
+
+            <div class="col-md-3">
+                <label class="form-label">Дата</label>
+                <input type="date" name="date" class="form-control" th:value="${param.date}">
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Зал</label>
+                <select name="hallId" class="form-select">
+                    <option value="">Любой</option>
+                    <option th:each="hall : ${halls}"
+                            th:value="${hall.id}"
+                            th:text="${hall.name}"
+                            th:selected="${param.hallId != null and param.hallId[0] == hall.id.toString()}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Фильм</label>
+                <input type="text" name="filmTitle" class="form-control"
+                       th:value="${param.filmTitle}" placeholder="Название фильма">
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Статус</label>
+                <select name="status" class="form-select">
+                    <option value="">Любой</option>
+                    <option th:each="status : ${allStatuses}"
+                            th:value="${status}"
+                            th:selected="${param.status != null and param.status[0].toString() == status.toString()}"
+                            th:text="${status.displayName}">
+                    </option>
+                </select>
+            </div>
+
+            <div class="col-md-1 d-flex align-items-end">
+                <div class="w-100">
+                    <button type="submit" class="btn btn-primary w-100 mb-2">
+                        <i class="bi bi-search"></i> Поиск
+                    </button>
+                    <a th:href="@{/admin/sessions}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-counterclockwise"></i> Сбросить
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+
+
+    <div class="batch-actions">
+        <div class="d-flex justify-content-between align-items-center batch-controls">
+            <div>
+                <button type="button" class="btn btn-outline-primary btn-sm me-2" onclick="selectAllSessions()">
+                    <i class="bi bi-check-all"></i> Выбрать все
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="deselectAllSessions()">
+                    <i class="bi bi-x-circle"></i> Снять выделение
+                </button>
+            </div>
+
+            <span class="text-muted small batch-counter" id="selectedCount">Выбрано: 0</span>
+        </div>
+
+        <form id="batchActionForm" th:action="@{/admin/sessions/batch}" method="post" class="mt-3">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+
+            <div class="d-flex flex-wrap batch-buttons">
+                <button type="submit" name="action" value="publish"
+                        class="btn btn-success btn-sm me-2 mb-2 batch-action-btn"
+                        data-confirm="Опубликовать выбранные сеансы?"
+                        disabled>
+                    <i class="bi bi-check-circle"></i> Опубликовать
+                </button>
+
+                <button type="submit" name="action" value="delete"
+                        class="btn btn-danger btn-sm me-2 mb-2 batch-action-btn"
+                        data-confirm="Удалить выбранные сеансы?"
+                        disabled>
+                    <i class="bi bi-trash"></i> Удалить
+                </button>
+
+                <button type="submit" name="action" value="complete"
+                        class="btn btn-primary btn-sm me-2 mb-2 batch-action-btn"
+                        data-confirm="Завершить выбранные сеансы?"
+                        disabled>
+                    <i class="bi bi-flag-fill"></i> Завершить
+                </button>
+
+                <button type="submit" name="action" value="cancel"
+                        class="btn btn-warning btn-sm me-2 mb-2 batch-action-btn"
+                        data-confirm="Отменить выбранные сеансы?"
+                        disabled>
+                    <i class="bi bi-camera-video-off"></i> Отменить
+                </button>
+            </div>
+
+
+            <div id="batchInputsContainer"></div>
+        </form>
+    </div>
+
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="text-muted small">
+            Показано <span th:text="${sessionPage.numberOfElements}"></span> из <span
+                th:text="${sessionPage.totalElements}"></span> сеансов
+        </div>
+
+        <div th:if="${sessionPage.totalElements > 5}" class="d-flex align-items-center">
+            <span class="me-2 small">Элементов на странице:</span>
+            <select class="form-select form-select-sm d-inline-block w-auto" onchange="location = this.value;">
+                <option th:each="s : ${#arrays.toIntegerArray({5, 10, 20, 50})}"
+                        th:if="${s <= sessionPage.totalElements}"
+                        th:value="@{/admin/sessions(page=0, size=${s}, sort=${param.sort}, sortDir=${param.sortDir}, filmTitle=${param.filmTitle}, hallId=${param.hallId}, date=${param.date}, status=${param.status})}"
+                        th:selected="${(param.size != null ? param.size[0] : sessionPage.size) == s}"
+                        th:text="${s}">
+                </option>
+
+                <option th:if="${sessionPage.totalElements > 20 and (param.size != null ? param.size[0] : sessionPage.size) != sessionPage.totalElements}"
+                        th:value="@{/admin/sessions(page=0, size=${sessionPage.totalElements}, sort=${param.sort}, sortDir=${param.sortDir}, filmTitle=${param.filmTitle}, hallId=${param.hallId}, date=${param.date}, status=${param.status})}"
+                        th:text="'Все (' + ${sessionPage.totalElements} + ')'">
+                </option>
+            </select>
+        </div>
+    </div>
+
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover session-table">
+            <thead class="table-light">
+            <tr>
+                <th width="40px">
+                    <input type="checkbox" class="form-check-input" id="selectAllCheckbox"
+                           onclick="toggleSelectAll(this)">
+                </th>
+                <th width="60px">ID</th>
+                <th>
+                    <a th:href="@{/admin/sessions(
+                            page=0,
+                            size=${param.size ?: sessionPage.size},
+                            sort='startTime',
+                            sortDir=${(param.sort != null and param.sort[0] == 'startTime') ? (param.sortDir[0] == 'asc' ? 'desc' : 'asc') : 'asc'},
+                            filmTitle=${param.filmTitle},
+                            hallId=${param.hallId},
+                            date=${param.date},
+                            status=${param.status}
+                        )}"
+                       th:class="${(param.sort != null and param.sort[0] == 'startTime') ? (param.sortDir[0] == 'asc' ? 'sort-asc' : 'sort-desc') : ''}">
+                        Дата
+                    </a>
+                </th>
+                <th>
+                    <a th:href="@{/admin/sessions(
+                            page=0,
+                            size=${param.size ?: sessionPage.size},
+                            sort='film.title',
+                            sortDir=${(param.sort != null and param.sort[0] == 'film.title') ? (param.sortDir[0] == 'asc' ? 'desc' : 'asc') : 'asc'},
+                            filmTitle=${param.filmTitle},
+                            hallId=${param.hallId},
+                            date=${param.date},
+                            status=${param.status}
+                        )}"
+                       th:class="${(param.sort != null and param.sort[0] == 'film.title') ? (param.sortDir[0] == 'asc' ? 'sort-asc' : 'sort-desc') : ''}">
+                        Фильм
+                    </a>
+                </th>
+                <th>
+                    <a th:href="@{/admin/sessions(
+                            page=0,
+                            size=${param.size ?: sessionPage.size},
+                            sort='hall.name',
+                            sortDir=${(param.sort != null and param.sort[0] == 'hall.name') ? (param.sortDir[0] == 'asc' ? 'desc' : 'asc') : 'asc'},
+                            filmTitle=${param.filmTitle},
+                            hallId=${param.hallId},
+                            date=${param.date},
+                            status=${param.status}
+                        )}"
+                       th:class="${(param.sort != null and param.sort[0] == 'hall.name') ? (param.sortDir[0] == 'asc' ? 'sort-asc' : 'sort-desc') : ''}">
+                        Зал
+                    </a>
+                </th>
+                <th>Время</th>
+                <th>Статус</th>
+                <th>Действия</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="sessionItem : ${sessionPage.content}" th:data-status="${sessionItem.status.name()}">
+                <td>
+                    <input type="checkbox" class="form-check-input session-checkbox"
+                           th:value="${sessionItem.id}"
+                           th:disabled="${sessionItem.status.name() == 'ARCHIVED' or sessionItem.status.name() == 'CANCELED'}">
+                </td>
+                <td th:text="${sessionItem.id}"></td>
+                <td th:text="${#temporals.format(sessionItem.startTime, 'dd.MM.yyyy')}"></td>
+                <td th:text="${sessionItem.film.title}"></td>
+                <td th:text="${sessionItem.hall.name}"></td>
+                <td th:text="${#temporals.format(sessionItem.startTime, 'HH:mm') + ' - ' + #temporals.format(sessionItem.endTime, 'HH:mm')}"></td>
+                <td><h4><span th:switch="${sessionItem.status.name()}" class="badge">
+                            <span th:case="'DRAFT'" class="badge bg-secondary text-bg-secondary">Черновик</span>
+                            <span th:case="'PUBLISHED'" class="badge bg-success text-bg-secondary">Опубликован</span>
+                            <span th:case="'ARCHIVED'" class="badge bg-primary text-bg-secondary">Завершен</span>
+                            <span th:case="'CANCELED'" class="badge bg-warning text-bg-secondary">Отменен</span>
+                        </span></h4>
+
+                </td>
+                <td class="action-buttons">
+                    <a th:href="@{/admin/sessions/view/{id}(id=${sessionItem.id})}"
+                       class="btn btn-sm btn-outline-primary" title="Просмотр зала">
+                        <i class="bi bi-grid"></i>
+                    </a>
+
+
+                    <span th:if="${sessionItem.status.name() == 'DRAFT'}">
+                            <button type="button" class="btn btn-sm btn-outline-success"
+                                    th:attr="data-id=${sessionItem.id}"
+                                    onclick="changeStatus(this, 'PUBLISHED')" title="Опубликовать сеанс">
+                                <i class="bi bi-check-circle"></i>
+                            </button>
+
+                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                    th:attr="data-id=${sessionItem.id}"
+                                    onclick="deleteSession(this)" title="Удалить сеанс">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </span>
+
+
+                    <span th:if="${sessionItem.status.name() == 'PUBLISHED'}">
+                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                    th:attr="data-id=${sessionItem.id}"
+                                    onclick="changeStatus(this, 'ARCHIVED')" title="Завершить сеанс">
+                                <i class="bi bi-flag-fill"></i>
+                            </button>
+
+                            <button type="button" class="btn btn-sm btn-outline-warning"
+                                    th:attr="data-id=${sessionItem.id}"
+                                    onclick="changeStatus(this, 'CANCELED')" title="Отменить сеанс">
+                                <i class="bi bi-camera-video-off"></i>
+                            </button>
+                        </span>
+                </td>
+            </tr>
+
+            <tr th:if="${sessionPage.content.isEmpty()}">
+                <td colspan="8" class="text-center text-muted py-4">
+                    <i class="bi bi-info-circle me-2"></i>Сеансы не найдены
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+
+    <nav th:if="${sessionPage.totalPages > 1}">
+        <ul class="pagination justify-content-center">
+            <li class="page-item" th:classappend="${sessionPage.first} ? 'disabled'">
+                <a class="page-link" th:href="@{/admin/sessions(
+                    page=0,
+                    size=${param.size ?: sessionPage.size},
+                    sort=${param.sort},
+                    sortDir=${param.sortDir},
+                    filmTitle=${param.filmTitle},
+                    hallId=${param.hallId},
+                    date=${param.date},
+                    status=${param.status}
+                )}">
+                    <i class="bi bi-chevron-double-left"></i>
+                </a>
+            </li>
+
+            <li class="page-item" th:classappend="${sessionPage.first} ? 'disabled'">
+                <a class="page-link" th:href="@{/admin/sessions(
+                    page=${sessionPage.number-1},
+                    size=${param.size ?: sessionPage.size},
+                    sort=${param.sort},
+                    sortDir=${param.sortDir},
+                    filmTitle=${param.filmTitle},
+                    hallId=${param.hallId},
+                    date=${param.date},
+                    status=${param.status}
+                )}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+
+            <li class="page-item" th:each="i : ${#numbers.sequence(
+                T(java.lang.Math).max(0, sessionPage.number-2),
+                T(java.lang.Math).min(sessionPage.number+2, sessionPage.totalPages-1)
+            )}" th:classappend="${i == sessionPage.number} ? 'active'">
+                <a class="page-link" th:href="@{/admin/sessions(
+                    page=${i},
+                    size=${param.size ?: sessionPage.size},
+                    sort=${param.sort},
+                    sortDir=${param.sortDir},
+                    filmTitle=${param.filmTitle},
+                    hallId=${param.hallId},
+                    date=${param.date},
+                    status=${param.status}
+                )}"
+                   th:text="${i+1}"></a>
+            </li>
+
+            <li class="page-item" th:classappend="${sessionPage.last} ? 'disabled'">
+                <a class="page-link" th:href="@{/admin/sessions(
+                    page=${sessionPage.number+1},
+                    size=${param.size ?: sessionPage.size},
+                    sort=${param.sort},
+                    sortDir=${param.sortDir},
+                    filmTitle=${param.filmTitle},
+                    hallId=${param.hallId},
+                    date=${param.date},
+                    status=${param.status}
+                )}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+
+            <li class="page-item" th:classappend="${sessionPage.last} ? 'disabled'">
+                <a class="page-link" th:href="@{/admin/sessions(
+                    page=${sessionPage.totalPages-1},
+                    size=${param.size ?: sessionPage.size},
+                    sort=${param.sort},
+                    sortDir=${param.sortDir},
+                    filmTitle=${param.filmTitle},
+                    hallId=${param.hallId},
+                    date=${param.date},
+                    status=${param.status}
+                )}">
+                    <i class="bi bi-chevron-double-right"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:replace="~{/admin/fragments/admin-sidebar :: scripts}"></script>
+
+<script>
+
+    const sessionManagement = {
+        csrfToken: document.querySelector('input[name="_csrf"]').value,
+        selectedSessions: new Set(),
+
+        init: function () {
+            this.setupEventListeners();
+            this.updateBatchButtons();
+        },
+
+        setupEventListeners: function () {
+
+            document.querySelectorAll('.session-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', () => this.handleCheckboxChange(checkbox));
+            });
+
+
+            document.getElementById('batchActionForm').addEventListener('submit', (e) => {
+                const button = e.submitter;
+                if (!confirm(button.getAttribute('data-confirm'))) {
+                    e.preventDefault();
+                    return;
+                }
+
+
+                this.selectedSessions.forEach(id => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'sessionIds';
+                    input.value = id;
+                    document.getElementById('batchInputsContainer').appendChild(input);
+                });
+            });
+        },
+
+        handleCheckboxChange: function (checkbox) {
+            const sessionId = checkbox.value;
+
+            if (checkbox.checked) {
+                this.selectedSessions.add(sessionId);
+            } else {
+                this.selectedSessions.delete(sessionId);
+            }
+
+            this.updateSelectedCounter();
+            this.updateBatchButtons();
+            this.updateSelectAllCheckbox();
+        },
+
+        updateSelectedCounter: function () {
+            document.getElementById('selectedCount').textContent = `Выбрано: ${this.selectedSessions.size}`;
+        },
+
+        updateBatchButtons: function () {
+            const buttons = document.querySelectorAll('.batch-action-btn');
+
+            if (this.selectedSessions.size === 0) {
+                buttons.forEach(btn => btn.disabled = true);
+                return;
+            }
+
+
+            let allDrafts = true;
+            let allPublished = true;
+
+            document.querySelectorAll('.session-checkbox:checked').forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                const status = row.getAttribute('data-status');
+
+                if (status !== 'DRAFT') allDrafts = false;
+                if (status !== 'PUBLISHED') allPublished = false;
+            });
+
+
+            document.querySelector('button[value="publish"]').disabled = !allDrafts;
+            document.querySelector('button[value="delete"]').disabled = !allDrafts;
+            document.querySelector('button[value="complete"]').disabled = !allPublished;
+            document.querySelector('button[value="cancel"]').disabled = !allPublished;
+        },
+
+        updateSelectAllCheckbox: function () {
+            const allCheckboxes = document.querySelectorAll('.session-checkbox:not(:disabled)');
+            const checkedCount = document.querySelectorAll('.session-checkbox:checked').length;
+            const selectAll = document.getElementById('selectAllCheckbox');
+
+            if (checkedCount === 0) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            } else if (checkedCount === allCheckboxes.length) {
+                selectAll.checked = true;
+                selectAll.indeterminate = false;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            }
+        },
+
+        selectAllSessions: function () {
+            document.querySelectorAll('.session-checkbox:not(:disabled)').forEach(checkbox => {
+                checkbox.checked = true;
+                this.selectedSessions.add(checkbox.value);
+            });
+
+            this.updateSelectedCounter();
+            this.updateBatchButtons();
+            this.updateSelectAllCheckbox();
+        },
+
+        deselectAllSessions: function () {
+            document.querySelectorAll('.session-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+                this.selectedSessions.delete(checkbox.value);
+            });
+
+            this.updateSelectedCounter();
+            this.updateBatchButtons();
+            this.updateSelectAllCheckbox();
+        },
+
+        toggleSelectAll: function (checkbox) {
+            if (checkbox.checked) {
+                this.selectAllSessions();
+            } else {
+                this.deselectAllSessions();
+            }
+        },
+
+        changeStatus: function (button, newStatus) {
+            const sessionId = button.getAttribute('data-id');
+            const actionMap = {
+                'PUBLISHED': 'Опубликовать',
+                'ARCHIVED': 'Завершить',
+                'CANCELED': 'Отменить'
+            };
+
+            if (confirm(`Вы уверены, что хотите ${actionMap[newStatus]?.toLowerCase()} этот сеанс?`)) {
+                fetch(`/admin/sessions/change-status/${sessionId}/${newStatus}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRF-TOKEN': this.csrfToken
+                    }
+                }).then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                });
+            }
+        },
+
+        deleteSession: function (button) {
+            const sessionId = button.getAttribute('data-id');
+
+            if (confirm('Вы уверены, что хотите удалить этот сеанс?')) {
+                fetch(`/admin/sessions/delete/${sessionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRF-TOKEN': this.csrfToken
+                    }
+                }).then(response => {
+                    if (response.redirected) {
+                        window.location.href = response.url;
+                    }
+                });
+            }
+        }
+    };
+
+
+    document.addEventListener('DOMContentLoaded', () => sessionManagement.init());
+
+
+    function selectAllSessions() {
+        sessionManagement.selectAllSessions();
+    }
+
+    function deselectAllSessions() {
+        sessionManagement.deselectAllSessions();
+    }
+
+    function toggleSelectAll(checkbox) {
+        sessionManagement.toggleSelectAll(checkbox);
+    }
+
+    function changeStatus(button, status) {
+        sessionManagement.changeStatus(button, status);
+    }
+
+    function deleteSession(button) {
+        sessionManagement.deleteSession(button);
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
+    <title>Панель администратора - Расписание сеансов</title>
+    <th:block th:replace="~{/admin/fragments/admin-sidebar :: head}"></th:block>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+
+    <style>
+
+        .main-content {
+            padding: 20px;
+        }
+
+        .time-grid-container {
+            overflow-x: auto;
+            white-space: nowrap;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            padding: 10px;
+            height: 150px;
+            background: #f8f9fa;
+        }
+
+        .time-grid {
+            display: flex;
+            height: 100px;
+            position: relative;
+        }
+
+        .time-slot {
+            min-width: 40px;
+            height: 100%;
+            border-right: 1px solid #eee;
+            position: relative;
+            box-sizing: border-box;
+            background: #f8f9fa;
+        }
+
+        .time-slot.available {
+            background: #f8f9fa;
+        }
+
+        .time-slot.technical-break {
+            background: repeating-linear-gradient(
+                    45deg,
+                    #f8d7da,
+                    #f8d7da 10px,
+                    #f5c6cb 10px,
+                    #f5c6cb 20px
+            );
+            position: relative;
+        }
+
+        .time-slot.technical-break.deletable {
+            cursor: pointer;
+        }
+
+        .time-slot.technical-break.deletable:hover {
+            box-shadow: inset 0 0 0 2px #dc3545;
+        }
+
+        .time-slot.technical-break::after {
+            content: "Тех.перерыв";
+            position: absolute;
+            top: 65%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%) rotate(-90deg);
+            text-align: center;
+            font-size: 10px;
+            color: #721c24;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .time-slot.cleaning-time {
+            background: repeating-linear-gradient(
+                    45deg,
+                    #e2f0fd,
+                    #e2f0fd 10px,
+                    #cfe2f3 10px,
+                    #cfe2f3 20px
+            );
+            position: relative;
+        }
+
+        .time-slot.cleaning-time::after {
+            content: "Перерыв";
+            position: absolute;
+            top: 65%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%) rotate(-90deg);
+            text-align: center;
+            font-size: 10px;
+            color: #0c5460;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .time-slot.session-time {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        .time-label {
+            position: absolute;
+            bottom: -25px;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .session-block {
+            height: 100%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            overflow: hidden;
+            position: absolute;
+            top: 0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0 5px;
+            box-sizing: border-box;
+            text-align: center;
+            white-space: normal;
+            word-break: break-word;
+            z-index: 1;
+        }
+
+        .session-block.deletable {
+            cursor: pointer;
+        }
+
+        .session-block.deletable:hover {
+            opacity: 0.9;
+            z-index: 1000;
+            transform: scale(1.02);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .session-tooltip {
+            position: absolute;
+            bottom: calc(100% + 5px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            display: none;
+            z-index: 1001;
+        }
+
+        .session-block:hover .session-tooltip {
+            display: block;
+        }
+
+        .time-slot.hovered {
+            box-shadow: inset 0 0 0 2px #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .dragging {
+            opacity: 0.8;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+
+        .time-slot.available:hover {
+            background-color: #e9f7ef;
+        }
+
+        .modal-tech-break {
+            display: none;
+            position: fixed;
+            z-index: 1050;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 400px;
+            border-radius: 5px;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: black;
+        }
+
+        .movie-carousel-container {
+            overflow-x: hidden;
+            width: 100%;
+            position: relative;
+        }
+
+        .movie-list {
+            display: flex;
+            gap: 15px;
+            transition: transform 0.3s ease;
+            padding: 10px 0;
+        }
+
+        .movie-item {
+            flex: 0 0 auto;
+            width: 200px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            cursor: grab;
+        }
+
+        .movie-item:active {
+            cursor: grabbing;
+            transform: scale(0.98);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .movie-poster-container {
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .movie-poster {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .movie-info {
+            flex-grow: 1;
+        }
+
+        .movie-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            line-height: 1.2;
+            color: #333;
+        }
+
+        .movie-duration {
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+
+        .movie-age-rating {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        .btn-scroll {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .btn-scroll:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 768px) {
+            .movie-item {
+                width: 160px;
+                padding: 12px;
+            }
+
+            .movie-poster-container {
+                height: 120px;
+            }
+
+            .movie-title {
+                font-size: 14px;
+            }
+
+            .movie-duration {
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .movie-item {
+                width: 140px;
+                padding: 10px;
+            }
+
+            .movie-poster-container {
+                height: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+
+<div th:replace="~{/admin/fragments/admin-sidebar :: sidebar}"></div>
+
+<div class="main-content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0"><i class="bi bi-calendar-event me-2"></i>Планирование сеансов</h1>
+    </div>
+
+    <div class="container mt-2">
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <label for="hallSelect" class="form-label">Зал:</label>
+                <select id="hallSelect" class="form-select">
+                    <option value="">Выберите зал</option>
+                    <option th:each="hall : ${halls}"
+                            th:value="${hall.id}"
+                            th:text="${hall.name}"></option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label for="datePicker" class="form-label">Дата:</label>
+                <input type="date" id="datePicker" class="form-control">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button id="addTechBreakBtn" class="btn btn-sm btn-outline-primary"><i class="bi bi-plus"></i>Добавить
+                    тех. перерыв
+                </button>
+            </div>
+        </div>
+
+        <div class="controls mb-3">
+            <button id="scrollLeft" class="btn btn-outline-secondary btn-scroll">←</button>
+            <button id="scrollRight" class="btn btn-outline-secondary btn-scroll">→</button>
+            <span id="hallInfo" class="ms-3"></span>
+            <span id="workHoursInfo" class="ms-3"></span>
+            <span id="breaksInfo" class="ms-3"></span>
+        </div>
+
+        <div id="scheduleContainer" class="d-none">
+            <div class="time-grid-container">
+                <div class="time-grid" id="timeGrid"></div>
+            </div>
+
+            <div class="mt-4 mb-4">
+                <h5 class="mb-3">Фильмы</h5>
+                <div class="d-flex align-items-center mb-2">
+                    <button id="scrollMoviesLeft" class="btn btn-outline-secondary btn-scroll me-2" disabled>←</button>
+                    <div class="movie-carousel-container">
+                        <div class="movie-list" id="movieList">
+                            <div th:each="film : ${films}" class="movie-item"
+                                 draggable="true"
+                                 th:data-film-id="${film.id}"
+                                 th:data-duration="${film.duration}">
+                                <div class="movie-poster-container">
+                                    <img th:src="${film.posterPath}" class="movie-poster" th:alt="${film.title}">
+                                </div>
+                                <div class="movie-info">
+                                    <div class="movie-title" th:text="${film.title}"></div>
+                                    <div class="movie-duration"
+                                         th:text="'Длительность: ' + ${film.duration} + ' мин.'"></div>
+                                </div>
+                                <div th:text="${film.status.displayName}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="scrollMoviesRight" class="btn btn-outline-secondary btn-scroll ms-2" disabled>→</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="techBreakModal" class="modal-tech-break">
+        <div class="modal-content">
+            <h3>Добавить технический перерыв</h3>
+            <span class="close">&times;</span>
+
+
+            <div id="techBreakMessage" class="alert d-none mb-3"></div>
+
+            <div class="mb-3">
+                <label for="techBreakStart" class="form-label">Время начала</label>
+                <input type="time" class="form-control" id="techBreakStart" step="300" min="09:00" max="22:00" required>
+                <div class="invalid-feedback">Пожалуйста, укажите время начала</div>
+                <small class="text-muted">Время должно быть кратно 5 минутам</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="techBreakEnd" class="form-label">Время окончания</label>
+                <input type="time" class="form-control" id="techBreakEnd" step="300" min="09:00" max="22:00" required>
+                <div class="invalid-feedback">Пожалуйста, укажите время окончания</div>
+            </div>
+
+            <div class="form-group">
+                <button id="confirmTechBreakBtn" class="btn btn-primary">Добавить</button>
+                <button id="cancelTechBreakBtn" class="btn btn-secondary">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirmDeleteModal" class="modal-tech-break">
+        <div class="modal-content">
+            <h3>Подтверждение удаления</h3>
+            <span class="close">&times;</span>
+            <p id="deleteModalText">Вы уверены, что хотите удалить этот элемент?</p>
+            <div class="form-group">
+                <button id="confirmDeleteBtn" class="btn btn-danger">Удалить</button>
+                <button id="cancelDeleteBtn" class="btn btn-secondary">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Константы
+    const COLORS_PALETTE = [
+        '#4CAF50', '#2196F3', '#9C27B0',
+        '#FF9800', '#607D8B', '#795548',
+        '#3F51B5', '#009688', '#E91E63',
+        '#00BCD4', '#8BC34A', '#FF5722'
+    ];
+
+
+    let currentHallId = null;
+    let currentDate = null;
+    let timeSlots = [];
+    let isDragging = false;
+    let draggedFilm = null;
+    let currentSessionToDelete = null;
+    const filmColors = {};
+    const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+    let currentMoviePosition = 0;
+    let moviesPerPage = 4;
+    let totalMovies = 0;
+
+    $(document).ready(function () {
+        $('#datePicker').val(new Date().toISOString().substr(0, 10));
+        initEventHandlers();
+        initDragAndDrop();
+        initMovieCarousel();
+        initModals();
+        updateMoviesPerPage();
+        window.addEventListener('resize', updateMoviesPerPage);
+    });
+
+    function updateMoviesPerPage() {
+        const width = window.innerWidth;
+        if (width < 576) {
+            moviesPerPage = 2;
+        } else if (width < 768) {
+            moviesPerPage = 3;
+        } else {
+            moviesPerPage = 4;
+        }
+        updateCarouselControls();
+    }
+
+    function initEventHandlers() {
+        $('#hallSelect, #datePicker').change(loadTimeGrid);
+        $('#scrollLeft').click(() => $('.time-grid-container').animate({scrollLeft: '-=200'}, 300));
+        $('#scrollRight').click(() => $('.time-grid-container').animate({scrollLeft: '+=200'}, 300));
+        $('#addTechBreakBtn').click(showTechBreakModal);
+    }
+
+    function initModals() {
+
+        const techBreakModal = document.getElementById('techBreakModal');
+        const techBreakClose = techBreakModal.querySelector('.close');
+        const cancelTechBreakBtn = document.getElementById('cancelTechBreakBtn');
+
+        techBreakClose.onclick = function () {
+            techBreakModal.style.display = 'none';
+        };
+        cancelTechBreakBtn.onclick = function () {
+            techBreakModal.style.display = 'none';
+        };
+
+        document.getElementById('confirmTechBreakBtn').onclick = addTechBreak;
+
+
+        const deleteModal = document.getElementById('confirmDeleteModal');
+        const deleteClose = deleteModal.querySelector('.close');
+        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+
+        deleteClose.onclick = function () {
+            deleteModal.style.display = 'none';
+        };
+        cancelDeleteBtn.onclick = function () {
+            deleteModal.style.display = 'none';
+        };
+
+        document.getElementById('confirmDeleteBtn').onclick = function () {
+            if (currentSessionToDelete) {
+                deleteSession(currentSessionToDelete);
+            }
+            deleteModal.style.display = 'none';
+        };
+
+
+        $(document).on('click', '.session-block.deletable, .time-slot.technical-break.deletable', function (e) {
+            e.stopPropagation();
+
+            const sessionId = $(this).data('session-id');
+            const breakId = $(this).data('break-id');
+
+            currentSessionToDelete = {
+                id: sessionId || breakId,
+                isBreak: !!breakId
+            };
+
+            if (sessionId) {
+                $('#deleteModalText').text('Вы уверены, что хотите удалить этот сеанс?');
+            } else {
+                $('#deleteModalText').text('Вы уверены, что хотите удалить этот технический перерыв?');
+            }
+
+            deleteModal.style.display = 'block';
+        });
+
+
+        window.onclick = function (event) {
+            if (event.target === techBreakModal) {
+                techBreakModal.style.display = 'none';
+            }
+            if (event.target === deleteModal) {
+                deleteModal.style.display = 'none';
+            }
+        };
+    }
+
+    function initMovieCarousel() {
+        const movieList = $('#movieList');
+        totalMovies = $('.movie-item').length;
+
+        $('#scrollMoviesLeft').click(function () {
+            if (currentMoviePosition > 0) {
+                currentMoviePosition--;
+                updateCarouselPosition();
+                updateCarouselControls();
+            }
+        });
+
+        $('#scrollMoviesRight').click(function () {
+            const maxPosition = Math.ceil(totalMovies / moviesPerPage) - 1;
+            if (currentMoviePosition < maxPosition) {
+                currentMoviePosition++;
+                updateCarouselPosition();
+                updateCarouselControls();
+            }
+        });
+
+        function updateCarouselPosition() {
+            const itemWidth = $('.movie-item').outerWidth(true);
+            const translateX = -currentMoviePosition * moviesPerPage * itemWidth;
+            movieList.css('transform', `translateX(${translateX}px)`);
+        }
+
+        function updateCarouselControls() {
+            const maxPosition = Math.ceil(totalMovies / moviesPerPage) - 1;
+            $('#scrollMoviesLeft').prop('disabled', currentMoviePosition <= 0);
+            $('#scrollMoviesRight').prop('disabled', currentMoviePosition >= maxPosition);
+        }
+
+        updateCarouselControls();
+    }
+
+    function showTechBreakModal() {
+        if (!currentHallId || !currentDate) {
+            showMessage($('#techBreakMessage'), 'Сначала выберите зал и дату', 'danger');
+            return;
+        }
+
+        $('#techBreakStart').val('');
+        $('#techBreakEnd').val('');
+        $('#techBreakMessage').addClass('d-none');
+        document.getElementById('techBreakModal').style.display = 'block';
+    }
+
+    function initDragAndDrop() {
+        $('.movie-item').each(function () {
+            this.addEventListener('dragstart', function (e) {
+                if (isDragging) return;
+
+                isDragging = true;
+                draggedFilm = {
+                    id: $(this).data('film-id'),
+                    duration: $(this).data('duration'),
+                    title: $(this).find('.movie-title').text()
+                };
+
+                const dragGhost = this.cloneNode(true);
+                dragGhost.classList.add('dragging');
+                document.body.appendChild(dragGhost);
+                e.dataTransfer.setDragImage(dragGhost, 0, 0);
+                e.dataTransfer.setData('text/plain', draggedFilm.id);
+            });
+
+            this.addEventListener('dragend', cleanupDrag);
+        });
+
+        $(document)
+            .on('dragover', '.time-slot', function (e) {
+                if (!isDragging) return;
+                e.preventDefault();
+                $('.time-slot.hovered').removeClass('hovered');
+                if ($(this).hasClass('available')) {
+                    $(this).addClass('hovered');
+                }
+            })
+            .on('dragleave', '.time-slot', function () {
+                $(this).removeClass('hovered');
+            })
+            .on('drop', '.time-slot', function (e) {
+                e.preventDefault();
+                $(this).removeClass('hovered');
+
+                if (isDragging && draggedFilm && $(this).hasClass('available')) {
+                    const startTime = $(this).data('start');
+                    if (startTime) {
+                        createSession(
+                            draggedFilm.id,
+                            currentHallId,
+                            currentDate,
+                            startTime
+                        );
+                    }
+                }
+
+                cleanupDrag();
+            });
+
+        $(document).on('dragover drop', function (e) {
+            e.preventDefault();
+            if (e.type === 'drop') cleanupDrag();
+        });
+    }
+
+    function cleanupDrag() {
+        $('.dragging').remove();
+        $('.time-slot.hovered').removeClass('hovered');
+        isDragging = false;
+        draggedFilm = null;
+    }
+
+    function loadTimeGrid() {
+        const hallId = $('#hallSelect').val();
+        const date = $('#datePicker').val();
+
+        if (!hallId || !date) {
+            $('#scheduleContainer').addClass('d-none');
+            return;
+        }
+
+        currentHallId = hallId;
+        currentDate = date;
+
+        $.get('/admin/schedule/grid', {
+            hallId,
+            date,
+            stepMinutes: 5
+        }, function (data) {
+            renderTimeGrid(data);
+            $('#scheduleContainer').removeClass('d-none');
+            $('#hallInfo').text(`Зал: ${data.hallName}`);
+        }).fail(function (xhr) {
+            console.error('Error loading grid:', xhr);
+            alert('Ошибка при загрузке данных: ' + (xhr.responseJSON?.message || xhr.statusText));
+        });
+    }
+
+    function renderTimeGrid(data) {
+        const grid = $('#timeGrid');
+        grid.empty();
+        timeSlots = [];
+
+        $('#hallInfo').text(`Зал: ${data.hallName}`);
+
+
+        if (data.slots.length > 0) {
+            const firstSlot = data.slots[0];
+            const lastSlot = data.slots[data.slots.length - 1];
+            $('#workHoursInfo').html(`
+                <strong>Режим работы:</strong> ${formatTime(firstSlot.startTime)} - ${formatTime(lastSlot.endTime)}
+            `);
+        }
+
+        if (data.breaks.length > 0) {
+            const breaksText = data.breaks.map(breakItem =>
+                `${formatTime(breakItem.start)} - ${formatTime(breakItem.end)}`
+            ).join(', ');
+
+            $('#breaksInfo').html(`
+                <strong>Тех. перерывы:</strong> ${breaksText}
+            `);
+        } else {
+            $('#breaksInfo').html('<strong>Тех. перерывы:</strong> нет');
+        }
+
+        data.slots.forEach(slot => {
+            const statusClass = getStatusClass(slot.status);
+            const slotEl = $(`
+                <div class="time-slot ${statusClass}"
+                     data-start="${formatTime(slot.startTime)}"
+                     data-end="${formatTime(slot.endTime)}"
+                     data-status="${slot.status}">
+                    <div class="time-label">${formatTime(slot.startTime)}</div>
+                </div>
+            `);
+            grid.append(slotEl);
+            timeSlots.push({
+                element: slotEl,
+                startTime: slot.startTime,
+                endTime: slot.endTime,
+                status: slot.status
+            });
+        });
+
+        data.breaks.forEach(techBreak => {
+            const startTime = techBreak.start;
+            const endTime = techBreak.end;
+
+
+            const startSlot = timeSlots.find(slot =>
+                timeToMinutes(formatTime(slot.startTime)) <= timeToMinutes(formatTime(startTime)) &&
+                timeToMinutes(formatTime(slot.endTime)) > timeToMinutes(formatTime(startTime))
+            );
+
+            const endSlot = timeSlots.find(slot =>
+                timeToMinutes(formatTime(slot.startTime)) < timeToMinutes(formatTime(endTime)) &&
+                timeToMinutes(formatTime(slot.endTime)) >= timeToMinutes(formatTime(endTime))
+            );
+
+            if (startSlot && endSlot) {
+                const startIndex = timeSlots.indexOf(startSlot);
+                const endIndex = timeSlots.indexOf(endSlot);
+                const slotCount = endIndex - startIndex + 1;
+                const width = slotCount * 40;
+
+
+                for (let i = startIndex; i <= endIndex; i++) {
+                    timeSlots[i].element
+                        .addClass('technical-break deletable')
+                        .attr('data-break-id', techBreak.id)
+                        .attr('data-break-start', formatTime(startTime))
+                        .attr('data-break-end', formatTime(endTime));
+                }
+            }
+        });
+
+
+        data.sessions.forEach(session => {
+            placeSessionOnGrid(session);
+        });
+    }
+
+    function timeToMinutes(timeStr) {
+        const [hours, minutes] = timeStr.split(':');
+        return parseInt(hours) * 60 + parseInt(minutes);
+    }
+
+    function getStatusClass(status) {
+        switch (status) {
+            case 'UNAVAILABLE_BREAK':
+                return 'technical-break';
+            case 'UNAVAILABLE_CLEAN':
+                return 'cleaning-time';
+            case 'UNAVAILABLE_SESSION':
+                return 'session-time';
+            default:
+                return 'available';
+        }
+    }
+
+    function formatTime(timeStr) {
+        if (!timeStr) return '';
+        if (timeStr.includes('T')) {
+            return timeStr.substring(11, 16);
+        }
+        return timeStr.length >= 5 ? timeStr.substring(0, 5) : timeStr;
+    }
+
+    function placeSessionOnGrid(session) {
+        if (!session?.film?.id) {
+            console.error('Invalid session data:', session);
+            return;
+        }
+
+        const startTime = formatTime(session.startTime);
+        const endTime = formatTime(session.endTime);
+
+
+        const startSlot = timeSlots.find(slot =>
+            timeToMinutes(formatTime(slot.startTime)) <= timeToMinutes(startTime) &&
+            timeToMinutes(formatTime(slot.endTime)) > timeToMinutes(startTime)
+        );
+
+        const endSlot = timeSlots.find(slot =>
+            timeToMinutes(formatTime(slot.startTime)) < timeToMinutes(endTime) &&
+            timeToMinutes(formatTime(slot.endTime)) >= timeToMinutes(endTime)
+        );
+
+        if (!startSlot || !endSlot) {
+            console.warn('Cannot find slots for session:', {
+                film: session.film.title,
+                time: `${startTime}-${endTime}`,
+                availableSlots: timeSlots.map(s => `${formatTime(s.startTime)}-${formatTime(s.endTime)}`)
+            });
+            return;
+        }
+
+        const startIndex = timeSlots.indexOf(startSlot);
+        const endIndex = timeSlots.indexOf(endSlot);
+        const slotCount = endIndex - startIndex + 1;
+        const width = slotCount * 40;
+
+
+        if (!filmColors[session.film.id]) {
+            filmColors[session.film.id] = getRandomColor();
+        }
+
+
+        const sessionEl = $(`
+            <div class="session-block deletable"
+                 data-session-id="${session.id}"
+                 style="left: ${startIndex * 40}px;
+                        width: ${width}px;
+                        background-color: ${filmColors[session.film.id]};">
+                ${session.film.title} (${startTime}-${endTime})
+                <div class="session-tooltip">
+                    ${session.film.title}<br>${startTime}-${endTime}<br>
+                    Кликните для удаления
+                </div>
+            </div>
+        `);
+
+        $('#timeGrid').append(sessionEl);
+    }
+
+    function getRandomColor() {
+        return COLORS_PALETTE[Math.floor(Math.random() * COLORS_PALETTE.length)];
+    }
+
+    function createSession(filmId, hallId, date, startTime) {
+        $.ajax({
+            url: '/admin/schedule/add',
+            method: 'POST',
+            contentType: 'application/json',
+            headers: {
+                [csrfHeader]: csrfToken,
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify({
+                filmId: filmId,
+                hallId: hallId,
+                date: date,
+                startTime: startTime
+            }),
+            success: function (response) {
+                loadTimeGrid();
+            },
+            error: function (xhr) {
+                alert(xhr.responseText || 'Ошибка при создании сеанса');
+            }
+        });
+    }
+
+    function deleteSession(sessionData) {
+        let url, method;
+
+        if (sessionData.isBreak) {
+            url = '/admin/breaks/delete/' + sessionData.id;
+            method = 'POST';
+        } else {
+            url = '/admin/schedule/delete/' + sessionData.id;
+            method = 'DELETE';
+        }
+
+        $.ajax({
+            url: url,
+            method: method,
+            headers: {
+                [csrfHeader]: csrfToken
+            },
+            success: function () {
+                loadTimeGrid();
+            },
+            error: function (xhr) {
+                alert(xhr.responseText || 'Ошибка при удалении');
+            }
+        });
+    }
+
+    function addTechBreak() {
+        const startTime = $('#techBreakStart').val();
+        const endTime = $('#techBreakEnd').val();
+        const messageDiv = $('#techBreakMessage');
+
+
+        messageDiv.addClass('d-none');
+
+        if (!startTime || !endTime) {
+            showMessage(messageDiv, 'Заполните все поля', 'danger');
+            return;
+        }
+
+        if (timeToMinutes(startTime) >= timeToMinutes(endTime)) {
+            showMessage(messageDiv, 'Время окончания должно быть позже времени начала', 'danger');
+            return;
+        }
+
+        $.ajax({
+            url: '/admin/breaks/create-modal',
+            method: 'POST',
+            contentType: 'application/json',
+            headers: {
+                [csrfHeader]: csrfToken,
+                'Content-Type': 'application/json'
+            },
+            data: JSON.stringify({
+                hallId: currentHallId,
+                startTime: currentDate,
+                start: startTime + ':00',
+                end: endTime + ':00'
+            }),
+            success: function (response) {
+                showMessage(messageDiv, 'Технический перерыв успешно добавлен', 'success');
+                setTimeout(() => {
+                    $('#techBreakModal').hide();
+                    loadTimeGrid();
+                }, 1500);
+            },
+            error: function (xhr) {
+                showMessage(messageDiv, xhr.responseText || 'Ошибка при добавлении технического перерыва', 'danger');
+            }
+        });
+    }
+
+    function timeToMinutes(timeStr) {
+        if (!timeStr) return 0;
+        const [hours, minutes] = timeStr.split(':');
+        return parseInt(hours) * 60 + parseInt(minutes);
+    }
+
+    function showMessage(element, text, type) {
+        element.removeClass('alert-success alert-danger d-none')
+            .addClass(`alert-${type}`)
+            .text(text)
+            .removeClass('d-none');
+    }
+
+</script>
+<script th:replace="~{/admin/fragments/admin-sidebar :: scripts}"></script>
+</body>
+</html>

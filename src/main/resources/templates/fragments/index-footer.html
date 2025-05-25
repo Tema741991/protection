@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<div th:fragment="footer">
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5>Кинотеатр "Премьера"</h5>
+                    <p>Лучшие фильмы в лучших залах</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Контакты</h5>
+                    <p>г. Миасс ул. Кинотеатральная, 1</p>
+                    <p>+7 (3513) 123-45-67</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Мы в соцсетях</h5>
+                    <a href="#" class="text-white me-2">VK</a>
+                    <a href="#" class="text-white me-2">Telegram</a>
+                    <a href="#" class="text-white">Instagram</a>
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <p class="mb-0">© <span th:text="${#dates.year(#dates.createNow())}">2023</span> Кинотеатр "Премьера". Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
+
+</div>

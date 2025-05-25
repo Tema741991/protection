@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${film.title} + ' | Кинотеатр'">Фильм | Кинотеатр</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0a1a2f;
+            color: #ffffff;
+        }
+
+        .btn-sessions.active {
+            background-color: #d9ecff;
+            color: #0a1a2f;
+            border-color: #d9ecff;
+        }
+
+        .btn-sessions:hover:not(.active) {
+            background-color: #d9ecff;
+            color: #0a1a2f;
+        }
+
+        .film-detail-section {
+            background-color: #0a1a2f;
+            padding: 40px 0;
+        }
+
+        .film-poster {
+            border-radius: 8px;
+            width: 100%;
+            height: 500px;
+            object-fit: cover;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .film-info {
+            background-color: #0a1a2f;
+            border-radius: 8px;
+            padding: 25px;
+        }
+
+        .film-title {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            color: #fff;
+        }
+
+        .film-meta {
+            color: #aaa;
+            margin-bottom: 1.5rem;
+        }
+
+        .film-description {
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .age-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 25px;
+            border-radius: 15%;
+            background-color: #ffc107;
+            color: #000;
+            font-weight: bold;
+            font-size: 0.8rem;
+        }
+
+        .schedule-card {
+            background-color: #0a1a2f;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .schedule-date {
+            color: white;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+
+    </style>
+</head>
+<body>
+
+<div th:replace="~{fragments/index-header :: header}"></div>
+
+<section class="film-detail-section">
+    <div class="container">
+
+        <div class="row">
+
+            <div class="col-lg-4 mb-4">
+                <img th:src="${film.posterPath}"
+                     class="film-poster"
+                     th:onerror="this.src='https://via.placeholder.com/300x450?text=No+Poster'"
+                     th:alt="${film.title}">
+            </div>
+
+            <div class="col-lg-8">
+                <div class="film-info">
+                    <h1 class="film-title" th:text="${film.title}"></h1>
+
+                    <div class="film-meta">
+                        <span class="me-3" th:text="${film.year}"></span>
+                        <span class="me-3" th:text="${film.duration} + ' мин'"></span>
+                        <span class="age-badge" th:text="${film.ageRating.code}"></span>
+                    </div>
+
+                    <div class="film-genres mb-3">
+                        <span th:each="genre : ${film.genres}"
+                              class="badge bg-secondary me-2"
+                              th:text="${genre}"></span>
+                    </div>
+
+                    <div class="film-description" th:text="${film.description}"></div>
+
+
+                </div>
+
+                <div class="mt-5">
+                    <div th:each="daySchedule : ${schedule}">
+                        <h5 class="schedule-date"
+                            th:text="${#temporals.format(daySchedule.date, 'EEEE, d MMMM')}"></h5>
+                        <div class="schedule-card">
+                            <div class="d-flex flex-wrap gap-2">
+                                <a th:each="sessionItem : ${daySchedule.sessions}"
+                                   th:href="@{/booking/select/{sessionId}(sessionId=${sessionItem.sessionId})}"
+                                   class="btn btn-outline-light btn-sessions  d-flex align-items-center justify-content-center"
+                                   style="width: 80px; height: 60px; text-decoration: none;">
+                                    [[${#temporals.format(sessionItem.startTime, 'HH:mm')}]]
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3" th:if="${schedule.isEmpty()}">
+                        На данный момент нет доступных сеансов.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div th:replace="~{fragments/index-footer :: footer}"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

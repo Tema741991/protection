@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кинотеатр - Контакты</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0a1a2f;
+            color: #ffffff;
+        }
+
+        .contacts-section {
+            background-color: #0a1a2f;
+            padding: 40px 0;
+            min-height: calc(100vh - 120px);
+        }
+
+        .contact-card {
+            background-color: #0a1a2f;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.2s ease;
+        }
+
+        .contact-card:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .contact-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+            color: #0d6efd;
+        }
+
+        .social-link {
+            display: inline-block;
+            padding: 8px 15px;
+            margin: 5px;
+            background-color: #2c2c2c;
+            border-radius: 5px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .social-link:hover {
+            background-color: #0d6efd;
+            color: white;
+        }
+
+        .map-container {
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+
+        .form-control {
+            background-color: #2c2c2c;
+            border: 1px solid #444;
+            color: white;
+        }
+
+        .form-control:focus {
+            background-color: #2c2c2c;
+            color: white;
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+    </style>
+</head>
+<body>
+
+<div th:replace="~{fragments/index-header :: header}"></div>
+
+<section class="contacts-section">
+    <div class="container">
+        <h2 class="mb-4">Наши контакты</h2>
+
+        <div class="row">
+
+            <div class="col-md-12">
+                <div class="contact-card">
+                    <h3 class="h5 mb-4"><i class="bi bi-geo-alt contact-icon"></i>Кинотеатр "Премьер"</h3>
+
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-geo contact-icon"></i>
+                            <div>
+                                <strong>Адрес:</strong>
+                                <p class="mb-0">г. Миасс, ул. Кинотеатральная, д. 1</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-telephone contact-icon"></i>
+                            <div>
+                                <strong class="d-flex justify-content-center">Информация о сеансах:</strong>
+                                <p class="mb-0 d-flex justify-content-center"><a href="tel:+735131234567"
+                                                                                 class="text-decoration-none">+7 (3513)
+                                    123-45-67</a></p>
+                            </div>
+                            <div class="ms-4">
+                                <strong class="d-flex justify-content-center">Отдел кадров:</strong>
+                                <p class="mb-0 d-flex justify-content-center"><a href="tel:+735131234567"
+                                                                                 class="text-decoration-none">+7 (3513)
+                                    123-45-68</a></p>
+                            </div>
+                            <div class="ms-4">
+                                <strong class="d-flex justify-content-center">Отдел маркетинга:</strong>
+                                <p class="mb-0 d-flex justify-content-center"><a href="tel:+735131234567"
+                                                                                 class="text-decoration-none">+7 (3513)
+                                    123-45-69</a></p>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-envelope contact-icon"></i>
+                            <div>
+                                <strong>Email:</strong>
+                                <p class="mb-0"><a href="mailto:info@premier-cinema.ru" class="text-decoration-none">info@premier-cinema.ru</a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-clock contact-icon"></i>
+                            <div>
+                                <strong>Часы работы:</strong>
+                                <p class="mb-0">Ежедневно с 9:00 до 23:00</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="contact-card">
+                    <h3 class="h5 mb-4"><i class="bi bi-people contact-icon"></i>Мы в соцсетях</h3>
+                    <div class="d-flex flex-wrap">
+                        <a href="https://vk.com/premier_cinema" class="social-link" target="_blank">
+                            <i class="bi bi-vimeo"></i> ВКонтакте
+                        </a>
+                        <a href="https://t.me/premier_cinema" class="social-link" target="_blank">
+                            <i class="bi bi-telegram"></i> Telegram
+                        </a>
+                        <a href="https://wa.me/74951234567" class="social-link" target="_blank">
+                            <i class="bi bi-whatsapp"></i> WhatsApp
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="contact-card">
+                <h3 class="h5 mb-4"><i class="bi bi-map contact-icon"></i>Как нас найти</h3>
+                <div class="map-container">
+                    <iframe src="https://yandex.ru/map-widget/v1/?um=constructor%3A1a2b3c4d5e6f7g8h9i0j&amp;source=constructor"
+                            width="100%" height="300" frameborder="0"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+</section>
+
+
+<div th:replace="~{fragments/index-footer :: footer}"></div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

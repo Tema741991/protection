@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head">
+
+    <style th:inline="none">
+        :root {
+            --sidebar-width: 250px;
+            --sidebar-bg: #343a40;
+            --sidebar-color: #adb5bd;
+            --sidebar-active-bg: #495057;
+        }
+
+        .admin-sidebar {
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            color: var(--sidebar-color);
+            transition: all 0.3s;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .admin-sidebar-header {
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.2);
+            text-align: center;
+            color: white;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .admin-sidebar-menu {
+            padding: 0;
+            list-style: none;
+            margin: 0;
+        }
+
+        .admin-sidebar-menu li {
+            position: relative;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .admin-sidebar-menu li:last-child {
+            border-bottom: none;
+            margin-top: 1rem;
+        }
+
+        .admin-sidebar-menu li a,
+        .admin-sidebar-menu li .logout-btn {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            color: var(--sidebar-color);
+            text-decoration: none;
+            transition: all 0.3s;
+            width: 100%;
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        .admin-sidebar-menu li:hover a,
+        .admin-sidebar-menu li:hover .logout-btn,
+        .admin-sidebar-menu li.active a {
+            background: var(--sidebar-active-bg);
+            color: white;
+        }
+
+        .admin-sidebar-menu li a i,
+        .admin-sidebar-menu li .logout-btn i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        .admin-logout-form {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+<div th:fragment="sidebar" class="admin-sidebar">
+    <div class="admin-sidebar-header">
+        <h4>Администратор</h4>
+    </div>
+    <ul class="admin-sidebar-menu">
+        <li>
+            <a th:href="@{/admin/age-ratings}">
+                <i class="bi bi-shield-lock"></i> Возрастные рейтинги
+            </a>
+        </li>
+        <li>
+            <a th:href="@{/admin/genres}">
+                <i class="bi bi-tags"></i> Жанры
+            </a>
+        </li>
+        <li>
+        <li>
+            <a th:href="@{/admin/films}">
+                <i class="bi bi-film"></i> Фильмы
+            </a>
+        </li>
+        <li>
+
+            <a th:href="@{/admin/halls}">
+                <i class="bi bi-table"></i> Залы
+            </a>
+        </li>
+        <li>
+            <a th:href="@{/admin/schedule}">
+                <i class="bi bi-calendar-event"></i> Расписание сеансов
+            </a>
+        </li>
+
+        <li>
+            <a th:href="@{/admin/sessions}">
+                <i class="bi bi-camera-video"></i> Сеансы
+            </a>
+        </li>
+
+        <li>
+            <a th:href="@{/admin/breaks}">
+                <i class="bi bi-clock-history"></i> Технические перерывы
+            </a>
+        </li>
+
+        <li>
+            <form th:action="@{/logout}" method="post" class="admin-logout-form">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit" class="logout-btn">
+                    <i class="bi bi-box-arrow-right"></i> Выйти
+                </button>
+            </form>
+        </li>
+    </ul>
+</div>
+
+
+<script th:fragment="scripts" th:inline="javascript">
+    document.addEventListener('DOMContentLoaded', function () {
+        const currentPath = window.location.pathname;
+        document.querySelectorAll('.admin-sidebar-menu a').forEach(link => {
+            if (link.getAttribute('href') === currentPath) {
+                link.parentElement.classList.add('active');
+            }
+        });
+    });
+</script>
+</body>
+</html>

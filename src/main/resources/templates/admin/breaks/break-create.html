@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}"></title>
+    <th:block th:replace="~{/admin/fragments/admin-sidebar :: head}"></th:block>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+
+    <style>
+        .break-form {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f8f9fa;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+            border: 1px solid #dee2e6;
+        }
+
+        .form-title {
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .form-label {
+            font-weight: 500;
+        }
+
+        .form-actions {
+            margin-top: 25px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+
+        .time-input {
+            max-width: 150px;
+        }
+    </style>
+</head>
+<body>
+
+
+<div th:replace="~{/admin/fragments/admin-sidebar :: sidebar}"></div>
+
+
+<div class="main-content">
+    <div class="break-form">
+        <h1 class="h3 mb-3 form-title"><i class="bi bi-clock me-2"></i><span th:text="${title}"></span></h1>
+
+        <form th:action="@{${actionUrl}}" th:object="${technicalBreak}" method="post" class="needs-validation"
+              novalidate>
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" th:field="${technicalBreak.id}"/>
+
+            <div class="mb-3">
+                <label for="hall" class="form-label">Зал</label>
+                <select class="form-select" id="hall" th:field="*{hallId}" required>
+                    <option value="">Выберите зал</option>
+                    <option th:each="hall : ${halls}"
+                            th:value="${hall.id}"
+                            th:text="${hall.name}"
+                            th:classappend="${#fields.hasErrors('hallId')} ? 'is-invalid' : ''">
+                        <div th:if="${#fields.hasErrors('hallId')}" class="invalid-feedback"><span
+                                th:errors="*{hallId}"></span></div>
+                    </option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="date" class="form-label">Дата перерыва</label>
+                <input type="date" class="form-control" id="date" th:field="*{startTime}" required
+                       th:classappend="${#fields.hasErrors('startTime')} ? 'is-invalid' : ''">
+                <div th:if="${#fields.hasErrors('startTime')}" class="invalid-feedback"><span
+                        th:errors="*{startTime}"></span></div>
+            </div>
+
+            <div class="mb-3">
+                <label for="startTime" class="form-label">Время начала</label>
+                <input type="time" class="form-control time-input" id="startTime"
+                       th:field="*{start}" step="300" min="09:00" max="22:00" required
+                       th:classappend="${#fields.hasErrors('start')} ? 'is-invalid' : ''">
+                <div th:if="${#fields.hasErrors('start')}" class="invalid-feedback"><span th:errors="*{start}"></span>
+                </div>
+                <small class="text-muted">Время должно быть кратно 5 минутам</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="end" class="form-label">Время окончания</label>
+                <input type="time" class="form-control time-input" id="end"
+                       th:field="*{end}" step="300" min="09:00" max="22:00" required
+                       th:classappend="${#fields.hasErrors('end')} ? 'is-invalid' : ''">
+                <div th:if="${#fields.hasErrors('end')}" class="invalid-feedback"><span th:errors="*{end}"></span></div>
+            </div>
+
+            <div th:if="${error}" class="alert alert-danger mt-3"><span th:text="${error}"></span></div>
+
+            <div class="form-actions d-flex justify-content-between">
+                <a th:href="@{/admin/breaks}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад к списку
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Сохранить
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:replace="~{/admin/fragments/admin-sidebar :: scripts}"></script>
+
+</body>
+</html>

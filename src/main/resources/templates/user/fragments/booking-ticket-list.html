@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<style>
+    .booking-card {
+        background-color: #3a3a3a;
+        border-left: 4px solid #0d6efd;
+    }
+
+    .ticket-card {
+        background-color: #3a3a3a;
+        border-left: 4px solid #28a745;
+    }
+
+    .badge-reserved {
+        background-color: #17a2b8;
+    }
+
+    .badge-sold {
+        background-color: #28a745;
+    }
+
+    .badge-cancelled {
+        background-color: #dc3545;
+    }
+
+    .badge-returned {
+        background-color: #6c757d;
+    }
+</style>
+<body>
+
+<div th:fragment="booking-ticket-list(activeTab, items, status, availableStatuses)">
+
+    <div th:if="${activeTab == 'bookings'}">
+        <h4 class="mb-4">Мои бронирования</h4>
+        <div class="mb-3">
+            <label th:if="${!items.isEmpty()}" class="form-label">Фильтр по статусу:</label>
+            <select class="form-select bg-dark text-light" onchange="location = this.value;">
+                <option th:value="@{/user/profile(tab='bookings')}"
+                        th:selected="${status == null}">Все бронирования
+                </option>
+                <option th:each="statusItem : ${availableStatuses}"
+                        th:if="${statusItem.name() == 'RESERVED' || statusItem.name() == 'CANCELLED'}"
+                        th:value="@{/user/profile(tab='bookings', status=${statusItem.name()})}"
+                        th:text="${statusItem.displayName}"
+                        th:selected="${status != null && status == statusItem.name()}">
+                </option>
+            </select>
+        </div>
+    </div>
+
+    <div th:if="${activeTab == 'tickets'}">
+        <h4 class="mb-4">Мои билеты</h4>
+        <div th:if="${!items.isEmpty()}" class="mb-3">
+            <label class="form-label">Фильтр по статусу:</label>
+            <select class="form-select bg-dark text-light" onchange="location = this.value;">
+                <option th:value="@{/user/profile(tab='tickets')}"
+                        th:selected="${status == null}">Все билеты
+                </option>
+                <option th:each="statusItem : ${availableStatuses}"
+                        th:if="${statusItem.name() == 'SOLD' || statusItem.name() == 'RETURNED'}"
+                        th:value="@{/user/profile(tab='tickets', status=${statusItem.name()})}"
+                        th:text="${statusItem.displayName}"
+                        th:selected="${status != null && status == statusItem.name()}">
+                </option>
+            </select>
+        </div>
+    </div>
+
+
+    <div th:each="item : ${items}"
+         th:class="${activeTab == 'tickets'} ? 'ticket-card p-3 mb-3 rounded' : 'booking-card p-3 mb-3 rounded'">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 th:text="${item.session.film.title}">Название фильма</h5>
+                <p class="mb-1">
+                    <span th:text="${#temporals.format(item.session.startTime, 'dd.MM.yyyy')}">дата</span>,
+                    <span th:text="${#temporals.format(item.session.startTime, 'HH:mm') + ' - ' + #temporals.format(item.session.endTime, 'HH:mm')}">время</span>
+                    |
+                    <span th:text="'Зал: ' + ${item.session.hall.name}">зал</span>,
+                    <span th:text="'Ряд: ' + ${item.seat.getRowNumber()} + ', Место: ' + ${item.seat.getSeatNumber()}"></span>
+                    <span class="badge ms-2"
+                          th:classappend="${'badge-' + item.status.name().toLowerCase()}"
+                          th:text="${item.status.displayName}">Статус</span>
+                </p>
+            </div>
+            <div class="d-flex flex-column align-items-end">
+                <div class="d-flex align-items-center">
+                    <span th:if="${activeTab == 'bookings' && item.status.name() == 'RESERVED'}" class="fw-bold me-3"
+                          th:text="${item.price + ' руб.'}">0 руб.</span>
+
+                    <form th:if="${activeTab == 'bookings' && item.status.name() == 'RESERVED'}"
+                          th:action="@{/user/bookings/{id}/buy(id=${item.id},seatId=${item.seat.id},seassionId=${item.session.id})}"
+                          method="post"
+                          style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-outline-light me-2">Купить</button>
+                        <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                    </form>
+
+
+                    <form th:if="${activeTab == 'bookings' && item.status.name() == 'RESERVED'}"
+                          th:action="@{/user/bookings/{id}/cancel(id=${item.id},seatId=${item.seat.id},seassionId=${item.session.id})}"
+                          method="post"
+                          style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-outline-light me-2">Отменить</button>
+                        <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                        <input type="hidden" name="_method" value="delete">
+                    </form>
+
+
+                    <form th:if="${activeTab == 'tickets' && item.status.name() == 'SOLD'}"
+                          th:action="@{/booking/ticket/{bookingId}(bookingId=${item.id})}"
+                          method="get"
+                          style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-outline-light">Детали</button>
+                    </form>
+
+                    <form th:if="${activeTab == 'tickets' && item.status.name() == 'SOLD'}"
+                          th:action="@{/user/bookings/{id}/refund(id=${item.id},seatId=${item.seat.id},seassionId=${item.session.id})}"
+                          method="post"
+                          style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-outline-light">Вернуть</button>
+                        <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                        <input type="hidden" name="_method" value="delete">
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <div th:if="${items.isEmpty()}" class="text-center">
+        <h5 th:if="${status == null}">
+            <span th:if="${activeTab == 'bookings'}">У вас еще нет бронирований</span>
+            <span th:if="${activeTab == 'tickets'}">У вас еще нет билетов</span>
+        </h5>
+        <h5 th:if="${status== 'RESERVED'}">
+            <span>У вас еще нет активных бронирований</span>
+        </h5>
+        <h5 th:if="${status == 'CANCELLED'}">
+            <span>У вас еще нет отменённых бронирований</span>
+        </h5>
+        <h5 th:if="${status == 'SOLD'}">
+            <span>У вас еще нет купленных билетов</span>
+        </h5>
+        <h5 th:if="${status == 'RETURNED'}">
+            <span>У вас еще нет возвращенных билетов</span>
+        </h5>
+    </div>
+
+</div>
+
+</body>
+</html>

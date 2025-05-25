@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Просмотр сеанса</title>
+    <style>
+
+        .screen {
+            width: 80%;
+            height: 30px;
+            margin: 0 auto 20px;
+            background-color: #f0f0f0;
+            border: 2px solid #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .seat-grid {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .row {
+            display: flex;
+            margin: 3px 0;
+        }
+
+        .row-label {
+            width: 20px;
+            margin-right: 10px;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+        }
+
+        .seat {
+            width: 30px;
+            height: 30px;
+            margin: 2px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            text-align: center;
+            line-height: 30px;
+            font-size: 12px;
+            position: relative;
+        }
+
+        .seat:hover::after {
+            content: attr(data-price);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .active {
+            background-color: #8bc34a;
+        }
+
+        .inactive {
+            background-color: #ccc;
+        }
+
+        .reserved {
+            background-color: #ff9800;
+        }
+
+        .sold {
+            background-color: #f44336;
+            cursor: not-allowed;
+        }
+
+        .selected {
+            outline: 3px solid #2196f3;
+        }
+
+        .legend {
+            margin: 20px auto;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .legend-item {
+            display: inline-block;
+            margin: 0 10px;
+        }
+
+        .legend-color {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            vertical-align: middle;
+            margin-right: 5px;
+            border: 1px solid #000;
+        }
+
+        .action-panel {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f5f5f5;
+        }
+
+        .action-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .back-btn {
+            background-color: #e0e0e0;
+        }
+
+        .back-list-btn {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .reserve-btn {
+            background-color: #ffc107;
+        }
+
+        .buy-btn {
+            background-color: #4caf50;
+            color: white;
+        }
+
+        .toggle-btn {
+            background-color: #2196f3;
+            color: white;
+        }
+
+        .price-btn {
+            background-color: #9c27b0;
+            color: white;
+        }
+
+        .price-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 10px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .price-controls input {
+            width: 100px;
+            padding: 5px;
+        }
+
+        .selection-info {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div style="text-align: center; margin: 10px 0;">
+    <h2 th:text="'Сеанс: ' + ${sessionItem.film.title} + ' в зале ' + ${sessionItem.hall.name}"></h2>
+    <div><strong>Дата:</strong> <span th:text="${#temporals.format(sessionItem.startTime, 'dd.MM.yyyy')}"></span></div>
+    </br>
+    <div><strong>Время:</strong> <span
+            th:text="${#temporals.format(sessionItem.startTime, 'HH:mm') + ' - ' + #temporals.format(sessionItem.endTime, 'HH:mm')}"></span>
+    </div>
+</div>
+
+<div class="screen">ЭКРАН</div>
+
+<div class="seat-grid">
+    <div th:each="rowLabel : ${rowLabels}" class="row">
+        <div class="row-label" th:text="${rowLabel}"></div>
+        <div th:each="seatItem : ${seatSessions}"
+             th:if="${seatItem.seatTemplate.rowNumber == rowLabel}"
+             class="seat"
+             th:classappend="${seatItem.statusClass}"
+             th:attr="data-seat-id=${seatItem.id},
+                     data-status=${seatItem.status},
+                     data-price='₽' + ${seatItem.price}"
+             th:text="${seatItem.seatTemplate.seatNumber}">
+        </div>
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item">
+        <span class="legend-color active"></span>
+        Доступно: <span th:text="${seatStats != null ? seatStats.get('active') : 0}"></span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-color reserved"></span>
+        Забронировано: <span th:text="${seatStats != null ? seatStats.get('reserved') : 0}"></span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-color sold"></span>
+        Продано: <span th:text="${seatStats != null ? seatStats.get('sold') : 0}"></span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-color inactive"></span>
+        Отключено: <span th:text="${seatStats != null ? seatStats.get('inactive') : 0}"></span>
+    </div>
+</div>
+
+
+<div class="action-panel" id="action-panel" hidden>
+    <div class="selection-info" id="selection-info">Выбрано мест: 0</div>
+
+    <input type="hidden" id="selected-seat-ids">
+    <input type="hidden" id="selected-seat-statuses">
+
+    <a th:href="@{/admin/sessions}" class="action-btn back-list-btn" id="back-list-btn">Назад</a>
+    <button class="action-btn back-btn" id="deselect-btn">Снять выделение</button>
+
+    <!--    <form method="post" id="reserve-form" style="display: inline;">-->
+    <!--        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">-->
+    <!--        <button type="submit" class="action-btn reserve-btn" id="reserve-btn" disabled>Забронировать</button>-->
+    <!--    </form>-->
+
+    <!--    <form method="post" id="buy-form" style="display: inline;">-->
+    <!--        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">-->
+    <!--        <button type="submit" class="action-btn buy-btn" id="buy-btn" disabled>Купить</button>-->
+    <!--    </form>-->
+
+    <form method="post" id="toggle-form" style="display: none;">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button type="submit" class="action-btn toggle-btn" id="toggle-btn"></button>
+    </form>
+
+    <div class="price-controls">
+        <form method="post" id="price-form" style="display: flex; gap: 10px; align-items: center;">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <input type="number" id="price-input" name="price" min="0" step="0.01" required placeholder="Цена">
+            <button type="submit" class="action-btn price-btn" id="price-btn">Установить цену</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const actionPanel = document.getElementById('action-panel');
+        const deselectBtn = document.getElementById('deselect-btn');
+        // const reserveBtn = document.getElementById('reserve-btn');
+        // const buyBtn = document.getElementById('buy-btn');
+        const toggleForm = document.getElementById('toggle-form');
+        const priceForm = document.getElementById('price-form');
+        const toggleBtn = document.getElementById('toggle-btn');
+        const priceBtn = document.getElementById('price-btn');
+        const priceInput = document.getElementById('price-input');
+        const selectedSeatIds = document.getElementById('selected-seat-ids');
+        const selectedSeatStatuses = document.getElementById('selected-seat-statuses');
+        const selectionInfo = document.getElementById('selection-info');
+
+        let selectedSeats = new Set();
+
+        // Обработчик клика по месту
+        document.querySelectorAll('.seat').forEach(seat => {
+            seat.addEventListener('click', (e) => {
+                const seatId = seat.dataset.seatId;
+
+
+                if (e.ctrlKey || e.metaKey) {
+                    if (selectedSeats.has(seatId)) {
+                        seat.classList.remove('selected');
+                        selectedSeats.delete(seatId);
+                    } else {
+                        seat.classList.add('selected');
+                        selectedSeats.add(seatId);
+                    }
+                }
+
+                else {
+                    document.querySelectorAll('.seat').forEach(s => s.classList.remove('selected'));
+                    selectedSeats.clear();
+                    seat.classList.add('selected');
+                    selectedSeats.add(seatId);
+                }
+
+                updateActionPanel();
+            });
+        });
+
+
+        deselectBtn.addEventListener('click', () => {
+            document.querySelectorAll('.seat').forEach(s => s.classList.remove('selected'));
+            selectedSeats.clear();
+            updateActionPanel();
+            actionPanel.hidden = true;
+        });
+
+
+        function updateActionPanel() {
+            const seats = Array.from(selectedSeats);
+            const seatElements = seats.map(id => document.querySelector(`.seat[data-seat-id="${id}"]`));
+
+            selectionInfo.textContent = `Выбрано мест: ${seats.length}`;
+
+            if (seats.length === 0) {
+                actionPanel.hidden = true;
+                toggleForm.style.display = 'none';
+                return;
+            }
+
+            actionPanel.hidden = false;
+
+            selectedSeatIds.value = seats.join(',');
+            selectedSeatStatuses.value = seatElements.map(el => el.dataset.status).join(',');
+
+            const sessionId = window.location.pathname.split('/').pop();
+
+
+            if (seats.length === 1) {
+                const seat = seatElements[0];
+                const status = seat.dataset.status;
+                if (status === 'SOLD' || status === 'RESERVED') {
+                    priceForm.style.display = 'none'
+                    toggleForm.style.display = 'none';
+                } else {
+                    priceForm.style.display = 'flex'
+                    toggleForm.style.display = 'inline';
+                }
+
+                if (status === 'ACTIVE') {
+                    toggleBtn.textContent = 'Выключить';
+                } else if (status === 'INACTIVE') {
+                    toggleBtn.textContent = 'Включить';
+                }
+
+                // document.getElementById('reserve-form').action = `/admin/sessions/${sessionId}/seat/${seats[0]}/reserve`;
+                // document.getElementById('buy-form').action = `/admin/sessions/${sessionId}/seat/${seats[0]}/buy`;
+                document.getElementById('toggle-form').action = `/admin/sessions/${sessionId}/seat/${seats[0]}/toggle-status`;
+                document.getElementById('price-form').action = `/admin/sessions/${sessionId}/seat/${seats[0]}/set-price`;
+
+                priceInput.value = seat.dataset.price.replace('₽', '');
+
+                // Обновляем состояние кнопок в зависимости от статуса
+                // reserveBtn.disabled = status !== 'ACTIVE';
+                // buyBtn.disabled = !(status === 'ACTIVE' || status === 'RESERVED');
+                toggleBtn.disabled = false;
+                priceBtn.disabled = false;
+            } else {
+                // reserveBtn.disabled = true;
+                // buyBtn.disabled = true;
+                toggleBtn.disabled = false;
+                priceBtn.disabled = false;
+
+                document.getElementById('toggle-form').action = `/admin/sessions/${sessionId}/seats/toggle-status?seatIds=${seats.join(',')}`;
+                document.getElementById('price-form').action = `/admin/sessions/${sessionId}/seats/set-price?seatIds=${seats.join(',')}`;
+
+                priceInput.value = '';
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

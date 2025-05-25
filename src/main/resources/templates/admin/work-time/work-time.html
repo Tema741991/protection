@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Редактирование расписания</title>
+</head>
+<body>
+<h2>Расписание работы зала</h2>
+
+<form th:action="@{/worktime/{id}(id=${hallId})}" th:object="${workTimes}" method="post">
+    <table>
+        <thead>
+        <tr>
+            <th>День недели</th>
+            <th>Открытие</th>
+            <th>Закрытие</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="workTime, iterStat : ${workTimes}">
+            <td>
+                <input type="hidden" th:name="workTimes[__${iterStat.index}__].dayOfWeek"
+                       th:value="${workTime.dayOfWeek}"/>
+                <span th:text="${workTime.dayOfWeek}"></span>
+            </td>
+            <td>
+                <input type="time" th:name="workTimes[__${iterStat.index}__].openTime"
+                       th:value="${workTime.openTime}"/>
+            </td>
+            <td>
+                <input type="time" th:name="workTimes[__${iterStat.index}__].closeTime"
+                       th:value="${workTime.closeTime}"/>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <button type="submit">Сохранить</button>
+</form>
+
+<a th:href="@{/halls}">Назад к залам</a>
+</body>
+</html>
